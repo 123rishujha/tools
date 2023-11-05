@@ -7,10 +7,21 @@ const { uploadFile } = require("../middleware/cloudinaryUpload");
 const imageCompressorCtr = async (req, res) => {
   try {
     const file = req.file;
-
     const originalImagePath = file.path;
-
     const compressedDirectory = "../imageCompressed";
+
+    const { quality, fileFormat } = req.body;
+
+    if (!quality) {
+      return res.status(400).json({ msg: "quality is required" });
+    }
+
+    if (!fileFormat) {
+      if (originalImagePath) {
+        fs.unlinkSync(originalImagePath);
+      }
+      return res.status(400).json({ msg: "file format is required" });
+    }
 
     // Ensure the upload directory exists, or create it if it doesn't
     if (!fs.existsSync(compressedDirectory)) {
@@ -25,10 +36,24 @@ const imageCompressorCtr = async (req, res) => {
     );
 
     try {
-      await sharp(originalImagePath)
-        .jpeg({ quality: 10 })
-        .toFile(compressedImagePath);
+      const sharpImage = sharp(originalImagePath);
+
+      if (fileFormat === "jpeg" || fileFormat === "jpg") {
+        sharpImage.jpeg({ quality: Number(quality) });
+      } else if (fileFormat === "png") {
+        sharpImage.png({ quality: Number(quality) });
+      } else if (fileFormat === "webp") {
+        sharpImage.webp({ quality: Number(quality) });
+      }
+      await sharpImage.toFile(compressedImagePath);
       const uploadImage = await uploadFile(compressedImagePath);
+
+      if (originalImagePath) {
+        fs.unlinkSync(originalImagePath);
+      }
+      if (compressedImagePath) {
+        fs.unlinkSync(compressedImagePath);
+      }
 
       res.status(200).json({
         msg: "success",
@@ -38,10 +63,23 @@ const imageCompressorCtr = async (req, res) => {
       });
     } catch (err) {
       console.log(err);
+      if (originalImagePath) {
+        fs.unlinkSync(originalImagePath);
+      }
+      if (compressedImagePath) {
+        fs.unlinkSync(compressedImagePath);
+      }
       res.status(400).json({ msg: err });
     }
   } catch (err) {
     console.log(err);
+    //just removing the images from folder
+    if (originalImagePath) {
+      fs.unlinkSync(originalImagePath);
+    }
+    if (compressedImagePath) {
+      fs.unlinkSync(compressedImagePath);
+    }
     res.status(400).json({ msg: err });
   }
 };
