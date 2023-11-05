@@ -5,13 +5,12 @@ const fs = require("fs");
 const { uploadFile } = require("../middleware/cloudinaryUpload");
 
 const imageCompressorCtr = async (req, res) => {
+  const file = req.file;
+  const originalImagePath = file.path;
+  const compressedDirectory = "../imageCompressed";
+  const { quality, fileFormat } = req.body;
+
   try {
-    const file = req.file;
-    const originalImagePath = file.path;
-    const compressedDirectory = "../imageCompressed";
-
-    const { quality, fileFormat } = req.body;
-
     if (!quality) {
       return res.status(400).json({ msg: "quality is required" });
     }
@@ -24,8 +23,10 @@ const imageCompressorCtr = async (req, res) => {
     }
 
     // Ensure the upload directory exists, or create it if it doesn't
-    if (!fs.existsSync(compressedDirectory)) {
-      fs.mkdirSync(compressedDirectory, { recursive: true });
+    if (!fs.existsSync(path.join(__dirname, compressedDirectory))) {
+      fs.mkdirSync(path.join(__dirname, compressedDirectory), {
+        recursive: true,
+      });
     }
 
     const compressedImagePath = path.join(
@@ -62,7 +63,7 @@ const imageCompressorCtr = async (req, res) => {
         filename: file?.filename?.split("-")[1] || "compressed",
       });
     } catch (err) {
-      console.log(err);
+      console.log(err, "first error");
       if (originalImagePath) {
         fs.unlinkSync(originalImagePath);
       }
@@ -72,7 +73,7 @@ const imageCompressorCtr = async (req, res) => {
       res.status(400).json({ msg: err });
     }
   } catch (err) {
-    console.log(err);
+    console.log(err, "second error");
     //just removing the images from folder
     if (originalImagePath) {
       fs.unlinkSync(originalImagePath);
