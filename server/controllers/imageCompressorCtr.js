@@ -1,36 +1,45 @@
-const sharp = require("sharp"); // Import Sharp library
+const sharp = require("sharp");
 const path = require("path");
-const os = require("os");
+// const os = require("os");
+const fs = require("fs");
+const { uploadFile } = require("../middleware/cloudinaryUpload");
 
 const imageCompressorCtr = async (req, res) => {
   try {
     const file = req.file;
-    console.log("file original", file);
-    // Define the path for the original and compressed images
+
     const originalImagePath = file.path;
-    const compressedImageName = `${file.originalname.replace(
-      ".jpg",
-      "",
-    )}-compressed.jpg`;
+
+    const compressedDirectory = "../imageCompressed";
+
+    // Ensure the upload directory exists, or create it if it doesn't
+    if (!fs.existsSync(compressedDirectory)) {
+      fs.mkdirSync(compressedDirectory, { recursive: true });
+    }
+
     const compressedImagePath = path.join(
       __dirname,
-      "../imageCompressed",
+      // "../imageCompressed",
+      compressedDirectory,
       `${file.filename}-compressed.jpg`,
     );
-    // const downloadFolder = path.join(
-    //   os.homedir(),
-    //   "Downloads",
-    //   compressedImageName,
-    // );
 
-    const data = await sharp(originalImagePath)
-      .jpeg({ quality: 50 })
-      // .toFile(downloadFolder);
-      .toFile(compressedImagePath);
-    console.log("data compressed", data);
+    try {
+      await sharp(originalImagePath)
+        .jpeg({ quality: 10 })
+        .toFile(compressedImagePath);
+      const uploadImage = await uploadFile(compressedImagePath);
 
-    // res.download(downloadFolder, compressedImageName);
-    res.status(200).json({ msg: "success", ...data });
+      res.status(200).json({
+        msg: "success",
+        url: uploadImage.url,
+        secure_url: uploadImage.secure_url,
+        filename: file?.filename?.split("-")[1] || "compressed",
+      });
+    } catch (err) {
+      console.log(err);
+      res.status(400).json({ msg: err });
+    }
   } catch (err) {
     console.log(err);
     res.status(400).json({ msg: err });
