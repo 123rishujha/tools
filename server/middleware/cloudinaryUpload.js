@@ -12,4 +12,24 @@ const uploadFile = async (path) => {
   return response;
 };
 
-module.exports = { uploadFile };
+const uploadStream = async (stream) => {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      ?.upload_stream(
+        {
+          folder: "compresssedData",
+        },
+        (err, result) => {
+          if (err) {
+            console.log(err);
+            reject(err);
+          } else {
+            resolve(result);
+          }
+        },
+      )
+      .end(stream);
+  });
+};
+
+module.exports = { uploadFile, uploadStream };
